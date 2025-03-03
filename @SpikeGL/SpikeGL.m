@@ -20,7 +20,7 @@ function [s] = SpikeGL( varargin )
     end
 
     if( ~ischar( host ) || ~isnumeric( port ) )
-        error( 'Host must be a string and port must be a number.' );
+        error( 'SpikeGL: Host must be a string; port must be a number.' );
     end
 
     s               = struct;

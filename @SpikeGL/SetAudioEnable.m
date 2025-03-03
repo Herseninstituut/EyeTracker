@@ -6,11 +6,11 @@
 function [s] = SetAudioEnable( s, b )
 
     if( ~isnumeric( b ) )
-        error( 'SetAudioEnable arg 2 should be a Boolean value {0,1}.' );
+        error( 'SetAudioEnable: Arg 2 must be a Boolean value {0,1}.' );
     end
 
     if( ~IsRunning( s ) )
-        warning( 'Not running, SetAudioEnable command ignored.' );
+        warning( 'SetAudioEnable: Not running, command ignored.' );
         return;
     end
 

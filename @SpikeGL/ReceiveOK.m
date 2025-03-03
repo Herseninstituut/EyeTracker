@@ -4,7 +4,7 @@ function [] = ReceiveOK( sm, cmd )
 
     line = CalinsNetMex( 'readline', sm.handle );
 
-    if(  ~contains( line, 'OK' )  )
+    if( isempty( strfind( line, 'OK' ) ) )
         error( 'After cmd [%s] got [%s] but expected ''OK''.\n', cmd, line );
     end
 end

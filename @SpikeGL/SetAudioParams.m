@@ -7,20 +7,22 @@
 function [s] = SetAudioParams( s, group, params )
 
     if( ~ischar( group ) )
-        error( 'SetAudioParams ''group'' argument must be a string.' );
+        error( 'SetAudioParams: ''group'' argument must be a string.' );
     end
 
     if( ~length( group ) )
-        error( 'SetAudioParams ''group'' argument must not be empty.' );
+        error( 'SetAudioParams: ''group'' argument must not be empty.' );
     end
 
     if( ~isstruct( params ) )
-        error( 'SetAudioParams ''params'' argument must be a struct.' );
+        error( 'SetAudioParams: ''params'' argument must be a struct.' );
     end
 
     ChkConn( s );
 
-    ok = CalinsNetMex( 'sendString', s.handle, sprintf( 'SETAUDIOPARAMS %s\n', group ) );
+    ok = CalinsNetMex( 'sendstring', s.handle, ...
+            sprintf( 'SETAUDIOPARAMS %s\n', group ) );
+
     ReceiveREADY( s, 'SETAUDIOPARAMS' );
 
     names = fieldnames( params );
@@ -30,18 +32,18 @@ function [s] = SetAudioParams( s, group, params )
         f = params.(names{i});
 
         if( isnumeric( f ) && isscalar( f ) )
-            line = sprintf( '%s = %g\n', names{i}, f );
-        elseif ( ischar( f ) )
-            line = sprintf( '%s = %s\n', names{i}, f );
+            line = sprintf( '%s=%g\n', names{i}, f );
+        elseif( ischar( f ) )
+            line = sprintf( '%s=%s\n', names{i}, f );
         else
-            error( 'Field %s must be numeric scalar or a string', names{i} );
+            error( 'SetAudioParams: Field %s must be numeric scalar or a string.', names{i} );
         end
 
-        ok = CalinsNetMex( 'sendString', s.handle, line );
+        ok = CalinsNetMex( 'sendstring', s.handle, line );
     end
 
     % end with blank line
-    ok = CalinsNetMex( 'sendString', s.handle, sprintf( '\n' ) );
+    ok = CalinsNetMex( 'sendstring', s.handle, sprintf( '\n' ) );
 
     ReceiveOK( s, 'SETAUDIOPARAMS' );
 end

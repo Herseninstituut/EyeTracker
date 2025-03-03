@@ -25,10 +25,9 @@
 % inactivity. By the way, if your script has pauses longer than 10 seconds,
 % and you reuse a handle that has timed out, the handle will automatically
 % reestablish a connection and the script will likely continue without
-% problems, but a warning will appear in the Command Window refelecting
+% problems, but a warning will appear in the Command Window reflecting
 % the timeout. Such warnings have a warningid, so you can suppress them
 % by typing >> warning( 'off', 'CalinsNetMex:connectionClosed' ).
-%
 %
 % EXAMPLES
 % --------
@@ -43,263 +42,582 @@
 %
 % StopRun( my_s );  % stop run and clean up
 %
-% StreamID
+% (js, ip)
 % --------
 %
-% Several functions work for either the NI data stream or for any of the
-% N enabled IMEC probe streams. StreamID = -1 selects NI. Values in the
-% range [0,..,N-1] select an IMEC stream.
+% The two integer values (js, ip) select a data stream.
+% js: stream type: {0=nidq, 1=obx, 2=imec-probe}.
+% ip: substream:   {0=nidq (if js=0), 0+=which OneBox or imec probe}.
+% Examples (js, ip):
+% (0, 0) = nidq.	// for nidq, ip is arbitrary but zero by convention
+% (1, 4) = obx4.
+% (2, 7) = imec7.
+% Note: ip has range [0..np-1], where, np is queried using GetStreamNP().
 %
 % FUNCTION REFERENCE
 % ------------------
 %
-%     myobj = SpikeGL()
-%     myobj = SpikeGL( host )
-%     myobj = SpikeGL( host, port )
+% myobj = SpikeGL()
+% myobj = SpikeGL( host )
+% myobj = SpikeGL( host, port )
 %
-%                Construct a new @SpikeGL instance and immediately attempt
-%                a network connection. If omitted, the defaults for host and
-%                port are {'localhost, 4142}.
+%     Construct a new @SpikeGL instance and immediately attempt
+%     a network connection. If omitted, the defaults for host and
+%     port are {'localhost, 4142}.
 %
-%    myobj = Close( myobj )
+% myobj = Close( myobj )
 %
-%                Close the network connection to SpikeGLX and release
-%                associated MATLAB resources.
+%     Close the network connection to SpikeGLX and release
+%     associated MATLAB resources.
 %
-%    myobj = ConsoleHide( myobj )
+% myobj = ConsoleHide( myobj )
 %
-%                Hide SpikeGLX console window to reduce screen clutter.
+%     Hide SpikeGLX console window to reduce screen clutter.
 %
-%    myobj = ConsoleShow( myobj )
+% myobj = ConsoleShow( myobj )
 %
-%                Show the SpikeGLX console window.
+%     Show the SpikeGLX console window.
 %
-%    params = EnumDataDir( myobj )
+% params = EnumDataDir( myobj, i )
 %
-%                Retrieve a listing of files in the data directory.
+%     Retrieve a listing of files in the ith data directory.
+%     Get main data directory by setting i=0 or omitting it.
 %
-%    [daqData,headCt] = Fetch( myObj, streamID, start_scan, scan_ct, channel_subset, downsample_ratio )
+% [daqData,headCt] = Fetch( myObj, js, ip, start_samp, max_samps, channel_subset, downsample_ratio )
 %
-%                Get MxN matrix of stream data.
-%                M = scan_ct = max samples to fetch.
-%                N = channel count...
-%                    If channel_subset is not specified, N = current
-%                    SpikeGLX save-channel subset.
-%                Fetching starts at index start_scan.
-%                Data are int16 type.
+%     Get MxN matrix of stream data.
+%     M = samp_count, MIN(max_samps,available).
+%     N = channel count...
+%     Data are int16 type.
+%     If filtered IM stream buffers are enabled, you may fetch from them with js=-2.
+%     Fetching starts at index start_samp.
+%     channel_subset is an optional vector of specific channels to fetch [a,b,c...], or,
+%         [-1] = all acquired channels, or,
+%         [-2] = all saved channels.
+%     downsample_ratio is an integer; return every Nth sample (default = 1).
+%     Also returns headCt = index of first sample in matrix.
 %
-%                downsample_ratio is an integer (default = 1).
+% [daqData,headCt] = FetchLatest( myObj, js, ip, max_samps, channel_subset, downsample_ratio )
 %
-%                Also returns headCt = index of first timepoint in matrix.
+%     Get MxN matrix of the most recent stream data.
+%     M = samp_count, MIN(max_samps,available).
+%     N = channel count...
+%     Data are int16 type.
+%     If filtered IM stream buffers are enabled, you may fetch from them with js=-2.
+%     channel_subset is an optional vector of specific channels to fetch [a,b,c...], or,
+%         [-1] = all acquired channels, or,
+%         [-2] = all saved channels.
+%     downsample_ratio is an integer; return every Nth sample (default = 1).
+%     Also returns headCt = index of first sample in matrix.
 %
-%    [daqData,headCt] = FetchLatest( myObj, streamID, scan_ct, channel_subset, downsample_ratio )
+% dir = GetDataDir( myobj, i )
 %
-%                Get MxN matrix of the most recent stream data.
-%                M = scan_ct = max samples to fetch.
-%                N = channel count...
-%                    If channel_subset is not specified, N = current
-%                    SpikeGLX save-channel subset.
+%     Get ith global data directory.
+%     Get main data directory by setting i=0 or omitting it.
 %
-%                downsample_ratio is an integer (default = 1).
+% params = GetGeomMap( myobj, ip )
 %
-%                Also returns headCt = index of first timepoint in matrix.
+%     Get geomMap for given logical imec probe.
+%     Returned as a struct of name/value pairs.
+%     Header fields:
+%         head_partNumber   ; string
+%         head_numShanks
+%         head_shankPitch   ; microns
+%         head_shankWidth   ; microns
+%     Channel 5, e.g.:
+%         ch5_s   ; shank index
+%         ch5_x   ; microns from left edge of shank
+%         ch5_z   ; microns from center of tip-most electrode row
+%         ch5_u   ; used-flag (in CAR operations)
 %
-%    chanCounts = GetAcqChanCounts( myobj, streamID )
+% [APgain,LFgain] = GetImecChanGains( myobj, ip, chan )
 %
-%                Returns a vector containing the counts of 16-bit
-%                words of each class being acquired.
+%     Returns the AP and LF gains for given probe and channel.
 %
-%                streamID = -1: NI channels: {MN,MA,XA,DW}.
-%                streamID >= 0: IM channels: {AP,LF,SY}.
+% params = GetParams( myobj )
 %
-%    dir = GetDataDir( myobj )
+%     Get the most recently used run parameters.
+%     These are a struct of name/value pairs.
 %
-%                Get global run data directory.
+% params = GetParamsImecCommon( myobj )
 %
-%    startCt = GetFileStartCount( myobj, streamID )
+%     Get imec parameters common to all enabled probes.
+%     Returned as a struct of name/value pairs.
 %
-%                Returns index of first scan in latest file,
-%                or zero if not available.
+% params = GetParamsImecProbe( myobj, ip )
 %
-%    n_probes = GetImProbeCount( myobj )
+%     Get imec parameters for given logical probe.
+%     Returned as a struct of name/value pairs.
 %
-%                Returns count of enabled IMEC probes.
+% params = GetParamsOneBox( myobj, ip, slot )
 %
-%    [SN,type] = GetImProbeSN( myobj, streamID )
+%     Get parameters for selected OneBox;
+%     returned as a struct of name/value pairs.
 %
-%                Returns serial number string (SN) and integer type
-%                of selected IMEC probe.
+%     To reference a OneBox configured as a recording stream
+%     set ip to its stream-id; if ip >= 0, slot is ignored.
+%     Any selected OneBox can also be referenced by setting
+%     ip = -1, and giving its slot index.
 %
-%    [Vmin,Vmax] = GetImVoltageRange( myobj, streamID )
+% list = GetProbeList( myobj )
 %
-%                Returns votlage range of selected IMEC probe.
+%     Get string with format:
+%     (probeID,nShanks,partNumber)()...
+%     - A parenthesized entry for each selected probe.
+%     - probeID: zero-based integer.
+%     - nShanks: integer {1,4}.
+%     - partNumber: string, e.g., NP1000.
+%     - If no probes, return '()'.
 %
-%    params = GetParams( myobj )
+% name = GetRunName( myobj )
 %
-%                Get the most recently used run parameters.
-%                These are a struct of name/value pairs.
+%     Get run base name.
 %
-%    name = GetRunName( myobj )
+% chanCounts = GetStreamAcqChans( myobj, js, ip )
 %
-%                Get run base name.
+%     For the selected substream, returns a vector of the
+%     number of channels of each type that stream is acquiring.
 %
-%    sampleRate = GetSampleRate( myobj, streamID )
+%     js = 0: NI channels: {MN,MA,XA,DW}.
+%     js = 1: OB channels: {XA,DW,SY}.
+%     js = 2: IM channels: {AP,LF,SY}.
 %
-%                Returns sample rate of selected stream in Hz,
-%                or zero if not enabled.
+% startingSample = GetStreamFileStart( myobj, js, ip )
 %
-%    channelSubset = GetSaveChans( myobj, streamID )
+%     Returns index of first sample in selected file,
+%     or zero if unavailable.
 %
-%                Returns a vector containing the indices of
-%                channels being saved.
+% mult = GetStreamI16ToVolts( myobj, js, ip, chan )
 %
-%    scanCount = GetScanCount( myobj, streamID )
+%     Returns multiplier converting 16-bit binary channel to volts.
 %
-%                Returns number of scans since current run started
-%                or zero if not running.
+% maxInt = GetStreamMaxInt( myobj, js, ip )
 %
-%    time = GetTime( myobj )
+%     Returns largest positive integer value for selected stream.
 %
-%                Returns (double) number of seconds since SpikeGLX application
-%                was launched.
+% n_substreams = GetStreamNP( myobj, js )
 %
-%    version = GetVersion( myobj )
+%     Returns number (np) of js-type substreams.
+%     For the given js, ip has range [0..np-1].
 %
-%                Get SpikeGLX version string.
+% sampleCount = GetStreamSampleCount( myobj, js, ip )
 %
-%    boolval = IsConsoleHidden( myobj )
+%     Returns number of samples since current run started,
+%     or zero if not running.
 %
-%                Returns 1 if console window is hidden, false otherwise.
-%                The console window may be hidden/shown using ConsoleHide()
-%                and ConsoleUnhide().
+% sampleRate = GetStreamSampleRate( myobj, js, ip )
 %
-%    boolval = IsInitialized( myobj )
+%     Returns sample rate of selected stream in Hz.
 %
-%                Return 1 if SpikeGLX has completed its startup
-%                initialization and is ready to run.
+% channelSubset = GetStreamSaveChans( myobj, js, ip )
 %
-%    boolval = IsRunning( myobj )
+%     Returns a vector containing the indices of
+%     the acquired channels that are being saved.
 %
-%                Returns 1 if SpikeGLX is currently acquiring data.
+% [nS,nC,nR,mat] = GetStreamShankMap( myObj, js, ip )
 %
-%    boolval = IsSaving( myobj )
+%     Get shank map for NI stream (js = 0):
+%     {nS,nC,nR} = max {shanks, cols, rows} on this probe;
+%     mat = Mx4 matrix of shank map entries, where,
+%     M   = channel count.
+%     4   = given channel's zero-based {shank, col, row} indices,
+%         plus a 'used' flag which is 1 if the channel should be
+%         included in displays and spatial averaging operations.
+%     Data are int16 type.
 %
-%                Returns 1 if the software is currently running
-%                AND saving data.
+% [SN,type] = GetStreamSN( myobj, js, ip )
 %
-%    boolval = IsUserOrder( myobj, streamID )
+%     js = 1: Return OneBox SN and slot.
+%     js = 2: Return probe  SN and type.
+%     SN = serial number string.
 %
-%                Returns 1 if graphs currently sorted in user order.
+% [Vmin,Vmax] = GetStreamVoltageRange( myobj, js, ip )
 %
-%                This query is sent only to the main Graphs window.
+%     Returns voltage range of selected data stream.
 %
-%    dstSample = MapSample( myobj, dstStream, srcSample, srcStream )
+% time = GetTime( myobj )
 %
-%                Returns sample in dst stream corresponding to
-%                given sample in src stream.
+%     Returns (double) number of seconds since SpikeGLX application
+%     was launched.
 %
-%    res = Par2( myobj, op, filename )
+% version = GetVersion( myobj )
 %
-%                Create, Verify, or Repair Par2 redundancy files for
-%                'filename'. Arguments:
+%     Get SpikeGLX version string.
 %
-%                op: a string that is either 'c', 'v', or 'r' for create,
-%                verify or repair respectively.
+% boolval = IsConsoleHidden( myobj )
 %
-%                filename: the .par2 or .bin file to which 'op' is appled.
+%     Returns 1 if console window is hidden, false otherwise.
+%     The console window may be hidden/shown using ConsoleHide()
+%     and ConsoleShow().
 %
-%                Progress is reported to the command window.
+% boolval = IsInitialized( myobj )
 %
-%    myobj = SetAudioEnable( myobj, bool_flag )
+%     Return 1 if SpikeGLX has completed its startup
+%     initialization and is ready to run.
 %
-%                Set audio output on/off. Note that this command has
-%                no effect if not currently running.
+% boolval = IsRunning( myobj )
 %
-%    myobj = SetAudioParams( myobj, group_string, params_struct )
+%     Returns 1 if SpikeGLX is currently acquiring data.
 %
-%                Set subgroup of parameters for audio-out operation. Parameters
-%                are a struct of name/value pairs. This call stops current output.
-%                Call SetAudioEnable( myobj, 1 ) to restart it.
+% boolval = IsSaving( myobj )
 %
-%    myobj = SetDataDir( myobj, dir )
+%     Returns 1 if the software is currently running
+%     AND saving data.
 %
-%                Set global run data directory.
+% boolval = IsUserOrder( myobj, js, ip )
 %
-%    myobj = SetDigOut( myobj, bool_flag, channels )
+%     Returns 1 if graphs currently sorted in user order.
+%     This query is sent only to the main Graphs window.
 %
-%                Set digital output on/off. Channel strings have form:
-%                'Dev6/port0/line2,Dev6/port0/line5'.
+% dstSample = MapSample( myobj, dstjs, dstip, srcSample, srcjs, srcip )
 %
-%    myobj = SetMetaData( myobj, metadata_struct )
+%     Returns sample in dst stream corresponding to
+%     given sample in src stream.
 %
-%                If a run is in progress, set meta data to be added to the
-%                next output file set. Meta data must be in the form of a
-%                struct of name/value pairs.
+% myobj = NI_DO_Set( myobj, 'lines', bits )
 %
-%    myobj = SetNextFileName( myobj, 'name' )
+%     Set one or more NI lines high/low.
+%     - lines is a string list of lines to set, e.g.:
+%         'Dev6/port0/line2,Dev6/port0/line5'
+%         'Dev6/port1/line0:3'
+%         'Dev6/port1:2'
+%     - bits is a uint32 value, each bit maps to a line:
+%         The lowest 8 bits map to port 0.
+%         The next higher 8 bits map to port 1, etc.
 %
-%                If a run is in progress, set the full path and run name
-%                for the next file set. For example, "Y:/mydir/../myrun."
-%                To that, SpikeGLX appends the stream and extension, for
-%                example, "Y:/mydir/../myrun.imec0.ap.bin." SpikeGLX will
-%                not create any folders or add any _g_t tags, so the name
-%                is under full user control. SpikeGLX clears your custom
-%                name and reverts to auto-naming after the current files
-%                are written. You must, therefore, call this function for
-%                each file, set and you must set the name before a trigger
-%                event for that file set.
+% myobj = NI_Wave_Arm( myobj, 'outChan', 'trigTerm' )
 %
-%    myobj = SetParams( myobj, params_struct )
+%     General sequence:
+%     1. NI_Wave_Load      : Load wave from SpikeGLX/_Waves folder.
+%     2. NI_Wave_Arm       : Set triggering parameters.
+%     3. NI_Wave_StartStop : Start if software trigger, stop when done.
 %
-%                The inverse of GetParams.m, this sets run parameters.
-%                Alternatively, you can pass the parameters to StartRun()
-%                which calls this in turn. Run parameters are a struct of
-%                name/value pairs. The call will fail with an error if a
-%                run is currently in progress.
+%     Set trigger method.
+%     - trigTerm is a string naming any trigger-capable terminal on your
+%       device, e.g., '/dev1/pfi2'. NI-DAQ requires names of terminals to
+%       start with a '/' character. This is indeed different than channel
+%       names which do not start with a slash.
+%       (1) Give a correct terminal string to trigger playback upon
+%           receiving a rising edge at that terminal.
+%       (2) Give any string that does NOT start with a '/' to trigger
+%           playback via the NI_Wave_StartStop command.
+%     - Multiple trigger events can NOT be given. For each trigger
+%       event after the first, you must first call NI_Wave_StartStop
+%       AND NI_Wave_Arm to stop and then rearm the task.
 %
-%    myobj = SetRecordingEnable( myobj, bool_flag )
+%     outChan is a string naming any wave-capable analog output
+%     channel on your device, e.g., 'dev1/ao1'.
 %
-%                Set triggering (file writing) on/off for current run.
-%                This command has no effect if not running.
+% myobj = NI_Wave_Load( myobj, 'outChan', 'wave_name', loop_mode )
 %
-%    myobj = SetRunName( myobj, 'name' )
+%     General sequence:
+%     1. NI_Wave_Load      : Load wave from SpikeGLX/_Waves folder.
+%     2. NI_Wave_Arm       : Set triggering parameters.
+%     3. NI_Wave_StartStop : Start if software trigger, stop when done.
 %
-%                Set the run name for the next time files are created
-%                (either by SetTrgEnable() or by StartRun()).
+%     Load a wave descriptor already placed in SpikeGLX/_Waves.
+%     - Pass 'mywavename' to this function; no path; no extension.
+%     - The playback loop_modes are: {1=loop until stopped, 0=once only}.
 %
-%    myobj = SetTriggerOffBeep( myobj, hertz, millisec )
+%     outChan is a string naming any wave-capable analog output
+%     channel on your device, e.g., 'dev1/ao1'.
 %
-%                Set frequency and duration of Windows beep signalling
-%                file closure. hertz=0 disables the beep. Command has
-%                no effect if not currently running.
+% myobj = NI_Wave_StartStop( myobj, 'outChan', start_bool )
 %
-%    myobj = SetTriggerOnBeep( myobj, hertz, millisec )
+%     General sequence:
+%     1. NI_Wave_Load      : Load wave from SpikeGLX/_Waves folder.
+%     2. NI_Wave_Arm       : Set triggering parameters.
+%     3. NI_Wave_StartStop : Start if software trigger, stop when done.
 %
-%                Set frequency and duration of Windows beep signalling
-%                file creation. hertz=0 disables the beep. Command has
-%                no effect if not currently running.
+%     Start (optionally) or stop wave playback.
+%     - If you selected software triggering with NI_Wave_Arm,
+%       then set start_bool=1 to start playback.
+%     - In all cases, set start_bool=0 to stop playback.
+%     - It is best to stop playback before changing wave parameters.
+%     - After playback or if looping mode is interrupted, the voltage
+%       remains at the last output level.
 %
-%    myobj = StartRun( myobj )
-%    myobj = StartRun( myobj, params )
-%    myobj = StartRun( myobj, runName )
+%     outChan is a string naming any wave-capable analog output
+%     channel on your device, e.g., 'dev1/ao1'.
 %
-%                Start data acquisition run. Optional second argument (params)
-%                is a struct of name/value pairs as returned from GetParams.m.
-%                Alternatively, the second argument can be a string (runName).
-%                Last-used parameters remain in effect if not specified here.
-%                An error is flagged if already running or a parameter is bad.
+% myobj = OBX_AO_Set( myobj, ip, slot, 'chn_vlt' )
 %
-%    myobj = StopRun( myobj )
+%     Set one or more OneBox AO (DAC) channel voltages.
+%     - chn_vlt is a string with format: (chan,volts)(chan,volts)...()
+%     - The chan values are integer AO indices in range [0,11].
+%     - You can only use AO channels already listed on the OBX setup tab.
+%     - Voltages are double values in range [-5.0,5.0] V.
+%     - DAC is 16-bit; theoretical resolution is (10 V)/(2^16) ~ .0001526 V.
+%     - Practical resolution, given noise, appears to be ~ 0.002 V.
+%     - AO channels are disabled at run start/end; voltage ~ 1.56 V.
 %
-%                Unconditionally stop current run, close data files
-%                and return to idle state.
+%     To reference a OneBox configured as a recording stream
+%     set ip to its stream-id; if ip >= 0, slot is ignored.
+%     Any selected OneBox can also be referenced by setting
+%     ip = -1, and giving its slot index.
 %
-%    res = VerifySha1( myobj, filename )
+% myobj = OBX_Wave_Arm( myobj, ip, slot, trigger, loop_mode )
 %
-%                Verifies the SHA1 sum of the file specified by filename.
-%                If filename is relative, it is appended to the run dir.
-%                Absolute path/filenames are also supported. Since this is
-%                a potentially long operation, it uses the 'disp' command
-%                to print progress information to the MATLAB console. The
-%                returned value is 1 if verified, 0 otherwise.
+%     General sequence:
+%     1. OBX_Wave_Load      : Load wave from SpikeGLX/_Waves folder.
+%     2. OBX_Wave_Arm       : Set triggering parameters.
+%     3. OBX_Wave_StartStop : Start if software trigger, stop when done.
+%
+%     Set trigger method, and playback loop_mode.
+%     - Trigger values...Playback starts:
+%         -2   : By calling OBX_Wave_StartStop.
+%         -1   : When TTL rising edge sent to SMA1.
+%         0-11 : When TTL rising edge sent to that XA (ADC) channel.
+%     - To use an ADC channel, you must name it as an XA channel on
+%       the OBX setup tab of the Acquisition Configuration dialog.
+%     - Multiple trigger events (either hardware or software) can be
+%       given without needing to rearm.
+%     - The playback loop_modes are: {1=loop until stopped, 0=once only}.
+%
+%     To reference a OneBox configured as a recording stream
+%     set ip to its stream-id; if ip >= 0, slot is ignored.
+%     Any selected OneBox can also be referenced by setting
+%     ip = -1, and giving its slot index.
+%
+% myobj = OBX_Wave_Load( myobj, ip, slot, 'wave_name' )
+%
+%     General sequence:
+%     1. OBX_Wave_Load      : Load wave from SpikeGLX/_Waves folder.
+%     2. OBX_Wave_Arm       : Set triggering parameters.
+%     3. OBX_Wave_StartStop : Start if software trigger, stop when done.
+%
+%     Load a wave descriptor already placed in SpikeGLX/_Waves.
+%     - Pass 'mywavename' to this function; no path; no extension.
+%
+%     To reference a OneBox configured as a recording stream
+%     set ip to its stream-id; if ip >= 0, slot is ignored.
+%     Any selected OneBox can also be referenced by setting
+%     ip = -1, and giving its slot index.
+%
+% myobj = OBX_Wave_StartStop( myobj, ip, slot, start_bool )
+%
+%     General sequence:
+%     1. OBX_Wave_Load      : Load wave from SpikeGLX/_Waves folder.
+%     2. OBX_Wave_Arm       : Set triggering parameters.
+%     3. OBX_Wave_StartStop : Start if software trigger, stop when done.
+%
+%     Start (optionally) or stop wave playback.
+%     - If you selected software triggering with OBX_Wave_Arm,
+%       then set start_bool=1 to start playback.
+%     - In all cases, set start_bool=0 to stop playback.
+%     - It is best to stop playback before changing wave parameters.
+%     - Waves only play at AO (DAC) channel-0.
+%     - To use the waveplayer, you must name channel AO-0 on
+%       the OBX setup tab of the Acquisition Configuration dialog.
+%     - After playback or if looping mode is interrupted, the voltage
+%       remains at the last output level.
+%
+%     To reference a OneBox configured as a recording stream
+%     set ip to its stream-id; if ip >= 0, slot is ignored.
+%     Any selected OneBox can also be referenced by setting
+%     ip = -1, and giving its slot index.
+%
+% myobj = Opto_emit( myobj, ip, color, site )
+%
+%     Direct emission to specified site (-1=dark).
+%     ip:    imec probe index.
+%     color: {0=blue, 1=red}.
+%     site:  [0..13], or, -1=dark.
+%
+% [site_atten_factors] = Opto_getAttenuations( myobj, ip, color )
+%
+%     Returns vector of 14 (double) site power attenuation factors.
+%     ip:    imec probe index.
+%     color: {0=blue, 1=red}.
+%
+% res = Par2( myobj, op, 'filename' )
+%
+%     Create, Verify, or Repair Par2 redundancy files for
+%     'filename'. Arguments:
+%
+%     op: a string that is either 'c', 'v', or 'r' for create,
+%     verify or repair respectively.
+%
+%     filename: the .par2 or .bin file to which 'op' is applied.
+%
+%     Progress is reported to the command window.
+%
+% myobj = PauseGraphs( myobj, bool_flag )
+%
+%     Pause Graphs window displays.
+%     Note: The displays are updated at ~10 Hz.
+%
+% myobj = SetAnatomy_Pinpoint( myobj, 'shankdat' )
+%
+%     Set anatomy data string with Pinpoint format:
+%     [probe-id,shank-id](startpos,endpos,R,G,B,rgnname)(startpos,endpos,R,G,B,rgnname)...()
+%        - probe-id: SpikeGLX logical probe id.
+%        - shank-id: [0..n-shanks].
+%        - startpos: region start in microns from tip.
+%        - endpos:   region end in microns from tip.
+%        - R,G,B:    region color as RGB, each [0..255].
+%        - rgnname:  region name text.
+%
+% myobj = SetAudioEnable( myobj, bool_flag )
+%
+%     Set audio output on/off. Note that this command has
+%     no effect if not currently running.
+%
+% myobj = SetAudioParams( myobj, group_string, params_struct )
+%
+%     Set subgroup of parameters for audio-out operation. Parameters
+%     are a struct of name/value pairs. This call stops current output.
+%     Call SetAudioEnable( myobj, 1 ) to restart it.
+%
+% myobj = SetDataDir( myobj, idir, 'dir' )
+%
+%     Set ith global data directory.
+%     Set required parameter idir to zero for main data directory.
+%
+% myobj = SetMetadata( myobj, metadata_struct )
+%
+%     If a run is in progress, set metadata to be added to the
+%     next output file-set. Metadata must be in the form of a
+%     struct of name/value pairs.
+%
+% myobj = SetMultiDriveEnable( myobj, bool_flag )
+%
+%     Set multi-drive run-splitting on/off.
+%
+% myobj = SetNextFileName( myobj, 'name' )
+%
+%     For only the next trigger (file writing event) this overrides
+%     all auto-naming, giving you complete control of where to save
+%     the files, the file name, and what g- and t-indices you want
+%     (if any). For example, regardless of the run's current data dir,
+%     run name and indices, if you set: 'otherdir/yyy_g5/yyy_g5_t7',
+%     SpikeGLX will save the next files in flat directory yyy_g5/:
+%        - otherdir/yyy_g5/yyy.g5_t7.nidq.bin,meta
+%        - otherdir/yyy_g5/yyy.g5_t7.imec0.ap.bin,meta
+%        - otherdir/yyy_g5/yyy.g5_t7.imec0.lf.bin,meta
+%        - otherdir/yyy_g5/yyy.g5_t7.imec1.ap.bin,meta
+%        - otherdir/yyy_g5/yyy.g5_t7.imec1.lf.bin,meta
+%        - etc.
+%
+%     - The destination directory must already exist...No parent directories
+%     or probe subfolders are created in this naming mode.
+%     - The run must already be in progress.
+%     - Neither the custom name nor its indices are displayed in the Graphs
+%     window toolbars. Rather, the toolbars reflect standard auto-names.
+%     - After writing this file set, the override is cleared and auto-naming
+%     will resume as if you never called setNextFileName. You have to call
+%     setNextFileName before each trigger event to create custom trial series.
+%     For example, you can build a software-triggered t-series using sequence:
+%        + setNextFileName( 'otherdir/yyy_g0/yyy_g0_t0' )
+%        + setRecordingEnable( 1 )
+%        + setRecordingEnable( 0 )
+%        + setNextFileName( 'otherdir/yyy_g0/yyy_g0_t1' )
+%        + setRecordingEnable( 1 )
+%        + setRecordingEnable( 0 )
+%        + etc.
+%
+% myobj = SetParams( myobj, params_struct )
+%
+%     The inverse of GetParams.m, this sets run parameters.
+%     Alternatively, you can pass the parameters to StartRun()
+%     which calls this in turn. Run parameters are a struct of
+%     name/value pairs. The call will error if a run is currently
+%     in progress.
+%
+%     Note: You can set any subset of [DAQSettings].
+%
+% myobj = SetParamsImecCommon( myobj, params_struct )
+%
+%     The inverse of GetParamsImecCommon.m, this sets parameters
+%     common to all enabled probes. Parameters are a struct of
+%     name/value pairs. The call will error if a run is currently
+%     in progress.
+%
+%     Note: You can set any subset of [DAQ_Imec_All].
+%
+% myobj = SetParamsImecProbe( myobj, params_struct, ip )
+%
+%     The inverse of GetParamsImecProbe.m, this sets parameters
+%     for a given logical probe. Parameters are a struct of
+%     name/value pairs. The call will error if file writing
+%     is currently in progress.
+%
+%     Note: You can set any subset of fields under [SerialNumberToProbe]/SNjjj.
+%
+% myobj = SetParamsOneBox( myobj, params_struct, ip, slot )
+%
+%     The inverse of GetParamsOneBox.m, this sets params
+%     for a selected OneBox. Parameters are a struct of
+%     name/value pairs.
+%
+%     To reference a OneBox configured as a recording stream
+%     set ip to its stream-id; if ip >= 0, slot is ignored.
+%     Any selected OneBox can also be referenced by setting
+%     ip = -1, and giving its slot index.
+%
+%     The call will error if a run is currently in progress.
+%
+%     Note: You can set any subset of fields under [SerialNumberToOneBox]/SNjjj.
+%
+% myobj = SetRecordingEnable( myobj, bool_flag )
+%
+%     Set gate (file writing) on/off during run.
+%
+%     When auto-naming is in effect, opening the gate advances
+%     the g-index and resets the t-index to zero. Auto-naming is
+%     on unless SetNextFileName has been used to override it.
+%
+% myobj = SetRunName( myobj, 'name' )
+%
+%     Set the run name for the next time files are created
+%     (either by trigger, SetRecordingEnable() or by StartRun()).
+%
+% myobj = SetTriggerOffBeep( myobj, hertz, millisec )
+%
+%     During a run, set frequency and duration of Windows
+%     beep signaling file closure. hertz=0 disables the beep.
+%
+% myobj = SetTriggerOnBeep( myobj, hertz, millisec )
+%
+%     During a run set frequency and duration of Windows
+%     beep signaling file creation. hertz=0 disables the beep.
+%
+% myobj = StartRun( myobj )
+% myobj = StartRun( myobj, params_struct )
+% myobj = StartRun( myobj, 'runName' )
+%
+%     Start data acquisition run. Optional second argument (params)
+%     is a struct of name/value pairs as returned from GetParams.m.
+%     Alternatively, the second argument can be a string (runName).
+%     Last-used parameters remain in effect if not specified here.
+%     An error is flagged if already running or a parameter is bad.
+%
+% myobj = StopRun( myobj )
+%
+%     Unconditionally stop current run, close data files
+%     and return to idle state.
+%
+% myobj = TriggerGT( myobj, g, t )
+%
+%     Using standard auto-naming, set both the gate (g) and
+%     trigger (t) levels that control file writing.
+%       -1 = no change.
+%        0 = set low.
+%        1 = increment and set high.
+%     E.g., triggerGT( -1, 1 ) = same g, increment t, start writing.
+%
+%     - TriggerGT only affects the 'Remote controlled' gate type and/or
+%     the 'Remote controlled' trigger type.
+%     - The 'Enable Recording' button, when shown, is a master override
+%     switch. TriggerGT is blocked until you click the button or call
+%     SetRecordingEnable.
+%
+% res = VerifySha1( myobj, 'filename' )
+%
+%     Verifies the SHA1 sum of the file specified by filename.
+%     If filename is relative, it is appended to the run dir.
+%     Absolute path/filenames are also supported. Since this is
+%     a potentially long operation, it uses the 'disp' command
+%     to print progress information to the MATLAB console. The
+%     returned value is 1 if verified, 0 otherwise.
 

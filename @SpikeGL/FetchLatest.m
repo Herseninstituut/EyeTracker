@@ -1,41 +1,42 @@
-% [daqData,headCt] = FetchLatest( myObj, streamID, scan_ct, channel_subset, downsample_ratio )
+% [daqData,headCt] = FetchLatest( myObj, js, ip, max_samps, channel_subset, downsample_ratio )
 %
 %     Get MxN matrix of the most recent stream data.
-%     M = scan_ct = max samples to fetch.
+%     M = samp_count, MIN(max_samps,available).
 %     N = channel count...
-%         If channel_subset is not specified, N = current
-%         SpikeGLX save-channel subset.
+%     Data are int16 type.
+%     If filtered IM stream buffers are enabled, you may fetch from them with js=-2.
+%     channel_subset is an optional vector of specific channels to fetch [a,b,c...], or,
+%         [-1] = all acquired channels, or,
+%         [-2] = all saved channels.
+%     downsample_ratio is an integer; return every Nth sample (default = 1).
+%     Also returns headCt = index of first sample in matrix.
 %
-%     downsample_ratio is an integer (default = 1).
-%
-%     Also returns headCt = index of first timepoint in matrix.
-%
-function [mat,headCt] = FetchLatest( s, streamID, scan_ct, varargin )
+function [mat,headCt] = FetchLatest( s, js, ip, max_samps, varargin )
 
-    if( nargin < 3 )
-        error( 'FetchLatest requires at least three arguments' );
-    else if( nargin >= 4 )
+    if( nargin < 4 )
+        error( 'FetchLatest: Requires at least four arguments.' );
+    else if( nargin >= 5 )
         subset = varargin{1};
     else
-        subset = GetSaveChans( s, streamID );
+        subset = [-1];
     end
 
     dwnsmp = 1;
 
-    if( nargin >= 5 )
+    if( nargin >= 6 )
 
         dwnsmp = varargin{2};
 
-        if ( ~isnumeric( dwnsmp ) || length( dwnsmp ) > 1 )
-            error( 'Downsample factor must be a single numeric value' );
+        if( ~isnumeric( dwnsmp ) || length( dwnsmp ) > 1 )
+            error( 'FetchLatest: Downsample factor must be a single numeric value.' );
         end
     end
 
-    max_ct = GetScanCount( s, streamID );
+    max_ct = GetStreamSampleCount( s, js, ip );
 
-    if( scan_ct > max_ct )
-        scan_ct = max_ct;
+    if( max_samps > max_ct )
+        max_samps = max_ct;
     end
 
-    [mat,headCt] = Fetch( s, streamID, max_ct-scan_ct, scan_ct, subset, dwnsmp );
+    [mat,headCt] = Fetch( s, js, ip, max_ct - max_samps, max_samps, subset, dwnsmp );
 end

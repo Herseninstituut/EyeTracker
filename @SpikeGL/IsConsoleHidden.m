@@ -2,9 +2,9 @@
 %
 %     Returns 1 if console window is hidden, false otherwise.
 %     The console window may be hidden/shown using ConsoleHide()
-%     and ConsoleUnhide().
+%     and ConsoleShow().
 %
 function [ret] = IsConsoleHidden( s )
 
-    ret = sscanf( DoQueryCmd( s, 'ISCONSOLEHIDDEN' ), '%d' );
+    ret = sscanf( DoQuery( s, 'ISCONSOLEHIDDEN' ), '%d' );
 end

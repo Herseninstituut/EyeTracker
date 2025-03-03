@@ -5,5 +5,5 @@
 %
 function ret = IsInitialized( s )
 
-    ret = sscanf( DoQueryCmd( s, 'ISINITIALIZED' ), '%d' );
+    ret = sscanf( DoQuery( s, 'ISINITIALIZED' ), '%d' );
 end

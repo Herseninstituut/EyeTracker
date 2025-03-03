@@ -1,60 +1,59 @@
-% [daqData,headCt] = Fetch( myObj, streamID, start_scan, scan_ct, channel_subset, downsample_ratio )
+% [daqData,headCt] = Fetch( myObj, js, ip, start_samp, max_samps, channel_subset, downsample_ratio )
 %
 %     Get MxN matrix of stream data.
-%     M = scan_ct = max samples to fetch.
+%     M = samp_count, MIN(max_samps,available).
 %     N = channel count...
-%         If channel_subset is not specified, N = current
-%         SpikeGLX save-channel subset.
-%     Fetching starts at index start_scan.
 %     Data are int16 type.
+%     If filtered IM stream buffers are enabled, you may fetch from them with js=-2.
+%     Fetching starts at index start_samp.
+%     channel_subset is an optional vector of specific channels to fetch [a,b,c...], or,
+%         [-1] = all acquired channels, or,
+%         [-2] = all saved channels.
+%     downsample_ratio is an integer; return every Nth sample (default = 1).
+%     Also returns headCt = index of first sample in matrix.
 %
-%     downsample_ratio is an integer (default = 1).
-%
-%     Also returns headCt = index of first timepoint in matrix.
-%
-function [mat,headCt] = Fetch( s, streamID, start_scan, scan_ct, varargin )
+function [mat,headCt] = Fetch( s, js, ip, start_samp, max_samps, varargin )
 
-    if( nargin < 4 )
-        error( 'Fetch requires at least 4 arguments' );
+    if( nargin < 5 )
+        error( 'Fetch: Requires at least 5 arguments.' );
     end
 
-    if( ~isnumeric( start_scan ) || ~size( start_scan, 1 ) )
-        error( 'Invalid scan_start parameter' );
+    if( ~isnumeric( start_samp ) || ~size( start_samp, 1 ) )
+        error( 'Fetch: Invalid samp_start parameter.' );
     end
 
-    if( ~isnumeric( scan_ct ) || ~size( scan_ct, 1 ) )
-        error( 'Invalid scan_ct parameter' );
+    if( ~isnumeric( max_samps ) || ~size( max_samps, 1 ) )
+        error( 'Fetch: Invalid max_samps parameter.' );
     end
 
     ChkConn( s );
 
     % subset has pattern id1#id2#...
-    if( nargin >= 5 )
+    if( nargin >= 6 )
         subset = sprintf( '%d#', varargin{1} );
     else
-        subset = sprintf( '%d#', GetSaveChans( s, streamID ) );
+        subset = '-1#';
     end
 
     dwnsmp = 1;
 
-    if( nargin >= 6 )
+    if( nargin >= 7 )
 
         dwnsmp = varargin{2};
 
         if( ~isnumeric( dwnsmp ) || length( dwnsmp ) > 1 )
-            error( 'Downsample factor must be a single numeric value' );
+            error( 'Fetch: Downsample factor must be a single numeric value.' );
         end
     end
 
-    ok = CalinsNetMex( 'sendString', s.handle, ...
-            sprintf( 'FETCH %d %ld %d %s %d\n', ...
-            streamID, start_scan, scan_ct, subset, dwnsmp ) );
+    ok = CalinsNetMex( 'sendstring', s.handle, ...
+            sprintf( 'FETCH %d %d %u %d %s %d\n', ...
+            js, ip, uint64(start_samp), max_samps, subset, dwnsmp ) );
 
-    line = CalinsNetMex( 'readLine', s.handle );
+    line = CalinsNetMex( 'readline', s.handle );
 
-    if( strfind( line, 'ERROR' ) == 1 )
-        error( line );
-        return;
+    if( isempty( line ) )
+        error( 'Fetch: Failed - see warning.' );
     end
 
     % cells       = strsplit( line );
@@ -63,10 +62,10 @@ function [mat,headCt] = Fetch( s, streamID, start_scan, scan_ct, varargin )
     headCt      = str2num(cells{4});
 
     if( ~isnumeric( mat_dims ) || ~size( mat_dims, 2 ) )
-        error( 'Invalid matrix dimensions.' );
+        error( 'Fetch: Invalid matrix dimensions.' );
     end
 
-    mat = CalinsNetMex( 'readMatrix', s.handle, 'int16', mat_dims );
+    mat = CalinsNetMex( 'readmatrix', s.handle, 'int16', mat_dims );
 
     % transpose
     mat = mat';

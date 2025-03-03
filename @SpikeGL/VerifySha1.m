@@ -1,4 +1,4 @@
-% res = VerifySha1( myobj, filename )
+% res = VerifySha1( myobj, 'filename' )
 %
 %     Verifies the SHA1 sum of the file specified by filename.
 %     If filename is relative, it is appended to the run dir.
@@ -13,19 +13,14 @@ function [res] = VerifySha1( s, file )
 
     ChkConn( s );
 
-    ok = CalinsNetMex( 'sendString', s.handle, sprintf( 'VERIFYSHA1 %s\n', file ) );
+    ok = CalinsNetMex( 'sendstring', s.handle, sprintf( 'VERIFYSHA1 %s\n', file ) );
 
     while( 1 )
 
-        line = CalinsNetMex( 'readLine', s.handle );
+        line = CalinsNetMex( 'readline', s.handle );
 
-        if( strcmp( line,'OK' ) )
+        if( strcmp( line, 'OK' ) )
             res = 1;
-            break;
-        end
-
-        if( strfind( line, 'ERROR' ) == 1 )
-            fprintf( 'Verify failed: %s\n', line( 7:length( line ) ) );
             break;
         end
 

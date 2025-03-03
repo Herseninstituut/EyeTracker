@@ -1,6 +1,6 @@
 % myobj = StartRun( myobj )
-% myobj = StartRun( myobj, params )
-% myobj = StartRun( myobj, runName )
+% myobj = StartRun( myobj, params_struct )
+% myobj = StartRun( myobj, 'runName' )
 %
 %     Start data acquisition run. Optional second argument (params)
 %     is a struct of name/value pairs as returned from GetParams.m.
@@ -23,12 +23,12 @@ function [s] = StartRun( varargin )
         elseif( isstruct( arg2 ) )
             params = arg2;
         else
-            error( 'Invalid argument type for second argument. Must be a string or struct.' );
+            error( 'StartRun: Invalid second argument; must be a string or struct.' );
         end
     end
 
     if( IsRunning( s ) )
-        error( 'Already running.' );
+        error( 'StartRun: Already running.' );
     end
 
     if( isempty( params ) )
@@ -41,5 +41,5 @@ function [s] = StartRun( varargin )
 
     SetParams( s, params );
 
-    DoSimpleCmd( s, sprintf( 'STARTRUN' ) );
+    DoSimpleCmd( s, 'STARTRUN' );
 end

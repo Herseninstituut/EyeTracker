@@ -5,5 +5,5 @@
 %
 function [ret] = GetTime( s )
 
-    ret = sscanf( DoQueryCmd( s, 'GETTIME' ), '%f' );
+    ret = sscanf( DoQuery( s, 'GETTIME' ), '%f' );
 end

@@ -6,7 +6,7 @@
 function ret = GetParams( s )
 
     ret = struct();
-    res = DoGetResultsCmd( s, 'GETPARAMS' );
+    res = DoGetCells( s, 'GETPARAMS' );
 
       % res is a cell array, each cell containing a string of form
       % '<parameter name> = <parameter value>'
@@ -43,11 +43,11 @@ function ret = GetParams( s )
             'once' );
 
             if( isempty( dblpat ) )
-              % store the value as a string
-              ret.(pair.name) = pair.value;
+                % store the value as a string
+                ret.(pair.name) = pair.value;
             else
-              % convert to double
-              ret.(pair.name) = str2double( pair.value );
+                % convert to double
+                ret.(pair.name) = str2double( pair.value );
             end
         end
     end

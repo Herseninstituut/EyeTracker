@@ -4,5 +4,5 @@
 %
 function [ret] = GetVersion( s )
 
-    ret = DoQueryCmd( s, 'GETVERSION' );
+    ret = DoQuery( s, 'GETVERSION' );
 end

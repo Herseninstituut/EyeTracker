@@ -60,6 +60,8 @@ function varargout = runEyeTracker(varargin)
 	%	- separate lossless pupil ROI video file (.mj2)
 	%	- binary file containing synchronization ROI luminance (uint16)
 	%	- button to flip image up/down
+    %Version 2.5 [2025-03-03] by RH
+    %   - small edits to make ET work with new SpikeGLX versions
 	
 	%set tags
 	%#ok<*INUSL>
@@ -581,14 +583,19 @@ function ptrToggleConnectSGL_Callback(hObject, eventdata, handles) %#ok<DEFNU>
 		drawnow;
 		
 		%get host address
-		strHost = get(sEyeFig.ptrEditHostAddress,'String');
+		% strHost = get(sEyeFig.ptrEditHostAddress,'String');
+        sET.strHostAddress = get(sEyeFig.ptrEditHostAddress,'String');
+
 		try
 			%connect
-			sET.hSGL = SpikeGL(strHost);
+			% sET.hSGL = SpikeGL(strHost);
+            sET.hSGL = SpikeGL(sET.strHostAddress);
 			%retrieve name & NI sampling rate
-			sET.intStreamNI = -1;
+			% sET.intStreamNI = -1;
+            sET.intStreamNI = 0;
 			%sET.strRecordingNI = GetRunName(sET.hSGL);
-			sET.dblSampFreqNI = GetSampleRate(sET.hSGL, sET.intStreamNI);
+			% sET.dblSampFreqNI = GetSampleRate(sET.hSGL, sET.intStreamNI);
+            sET.dblSampFreqNI = GetStreamSampleRate(sET.hSGL, sET.intStreamNI, sET.strHostAddress);
 			%success
 			boolSuccess = true;
 		catch

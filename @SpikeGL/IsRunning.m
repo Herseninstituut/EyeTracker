@@ -4,5 +4,5 @@
 %
 function [ret] = IsRunning( s )
 
-    ret = sscanf( DoQueryCmd( s, 'ISRUNNING' ), '%d' );
+    ret = sscanf( DoQuery( s, 'ISRUNNING' ), '%d' );
 end

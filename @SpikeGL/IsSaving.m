@@ -5,5 +5,5 @@
 %
 function [ret] = IsSaving( s )
 
-    ret = sscanf( DoQueryCmd( s, 'ISSAVING' ), '%d' );
+    ret = sscanf( DoQuery( s, 'ISSAVING' ), '%d' );
 end

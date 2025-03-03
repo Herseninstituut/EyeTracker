@@ -4,6 +4,5 @@
 %
 function [name] = GetRunName( s )
 
-    p = GetParams( s );
-    name = p.snsRunName;
+    name = DoQuery( s, 'GETRUNNAME' );
 end

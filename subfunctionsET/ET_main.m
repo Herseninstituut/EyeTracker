@@ -161,7 +161,7 @@ function ET_main(varargin)
 				
 				%% get spikeGLX timestamp
 				if boolRecording && boolSaveToDisk && ~isempty(sET.hSGL)
-					intCurCountNI = GetScanCount(sET.hSGL, sET.intStreamNI);
+					intCurCountNI = GetStreamSampleCount(sET.hSGL, sET.intStreamNI, sET.strHostAddress);
 					dblEphysTimeNI = intCurCountNI/sET.dblSampFreqNI;
 					
 					%create sync matrix
