@@ -1,6 +1,6 @@
 function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 	%getEyeTrackingOffline Run offline pupil detection
-	%   sPupil = getEyeTrackingOffline(sFileLocs)
+	%   sPupil = getEyeTrackingOffline(sFile,strTempDir)
 	
 	%% retrieve paths and copy required files
 	%placeholder
@@ -15,10 +15,10 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 	end
 	
 	%vid
-	strVidFile = sFile.name;
-	strVidPath = sFile.folder;
-	if ~strcmp(strVidPath(end),filesep)
-		strVidPath(end+1) = filesep;
+	strSourceVidFile = sFile.name;
+	strSourceVidPath = sFile.folder;
+	if ~strcmp(strSourceVidPath(end),filesep)
+		strSourceVidPath(end+1) = filesep;
 	end
 	%params
 	strParFile = sFile.sTrackParams.name;
@@ -28,9 +28,12 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 	end
 	
 	% copy files to local temp directory
-	fprintf('Copying "%s" to local path "%s" [%s]\n',strVidFile,strTempDir,getTime);
-	ETP_prepareMovie(strVidPath,strVidFile,strTempDir,'Yes');
-	[status2,msg2,msgID2] = copyfile([strParPath strParFile],[strTempDir strParFile]);
+	strFullVidFile = ETP_prepareMovie(strSourceVidPath,strSourceVidFile,strTempDir,'Yes');
+	[strVidPath,strVidFileName,strVidFileExt] = fileparts(strFullVidFile);
+	strVidFile = [strVidFileName strVidFileExt];
+	
+	%copy parameters file
+	[status2,msg2,msgID2] = copyfile(fullpath(strParPath,strParFile),fullpath(strTempDir,strParFile));
 	if status2 == 0,error(msgID2,sprintf('Error copying "%s": %s',strParFile,msg2));end
 	if contains(strVidFile,'Raw')
 		strMiniOut = strrep(strVidFile,'Raw','MiniVid');
@@ -48,6 +51,18 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 		strTrackedFile = [strTrackedFile 'Processed.mat'];
 	end
 	
+	%% create gui
+	%get paramaters & add video
+	sTrPar = sFile.sTrackParams.sET;
+	sTrPar.strVidFile = strVidFile;
+	sTrPar.strVidPath = strVidPath;
+	sTrPar.intAllFrames = 0;
+	sTrPar.dblTotDurSecs = 0;
+	
+	%make popup
+	sFigETOM = ETO_genFastMonitor(sTrPar);
+	sFigETOM.ptrTextCurT.String = sprintf('Initializing...');
+				
 	%% retrieve paths and copy optional files
 	%sync
 	if isfield(sFile,'sSync') && ~isempty(sFile.sSync)
@@ -67,7 +82,6 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 	end
 	
 	%% get values
-	sTrPar = sFile.sTrackParams.sET;
 	dblGain = sTrPar.dblGain;
 	dblGamma = sTrPar.dblGamma;
 	intTempAvg = round(sTrPar.intTempAvg);
@@ -77,13 +91,10 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 	sglPupilT = sTrPar.dblThreshPupil;
 	vecPupil = sTrPar.vecPupil;
 	objSE = sTrPar.objSE;
-	%add video
-	sTrPar.strVidFile = strVidFile;
-	sTrPar.strVidPath = strVidPath;
 	
 	%% build elements & check gpu
 	% access video
-	objVid = VideoReader([strTempDir strVidFile]);
+	objVid = VideoReader(strFullVidFile);
 	intAllFrames = objVid.NumberOfFrames;
 	dblTotDurSecs = objVid.Duration;
 	sTrPar.intAllFrames = intAllFrames;
@@ -141,9 +152,6 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 	vecSyncX = vecRectSyncPix(1):(vecRectSyncPix(1)+vecRectSyncPix(3));
 	
 	%% pre-allocate & load initial frames
-	%create gui
-	sFigETOM = ETO_genFastMonitor(sTrPar);
-	
 	%prep vars
 	vecPrevLoc = [sTrPar.intX/2 sTrPar.intY/2];
 	intFrame = 0;
@@ -163,6 +171,8 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 	vecPupilCenterX = nan(1,intDetectFrames);
 	vecPupilCenterY = nan(1,intDetectFrames);
 	vecPupilRadius = nan(1,intDetectFrames);
+	vecPupilRadius2 = nan(1,intDetectFrames);
+	vecPupilAngle = nan(1,intDetectFrames);
 	vecPupilEdgeHardness = nan(1,intDetectFrames);
 	vecPupilMeanPupilLum = nan(1,intDetectFrames);
 	vecPupilSdPupilLum = nan(1,intDetectFrames);
@@ -173,7 +183,9 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 	vecPupilSyncLum = nan(1,intDetectFrames);
 	vecPupilNotReflection = nan(1,intDetectFrames);
 	%prep minivid
-	objMiniVid = VideoWriter([strTempDir strMiniOut],'MPEG-4');
+	[strPath,strMiniFile,strExt]=fileparts(strMiniOut);
+	strMiniOut = strcat(strMiniFile,'.mj2');
+	objMiniVid = VideoWriter(fullpath(strTempDir,strMiniOut), 'Archival');
 	objMiniVid.FrameRate = objVid.FrameRate/intTempAvg;
 	open(objMiniVid);
 	
@@ -191,6 +203,7 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 		catch
 			pause(0.5);
 			warning([mfilename ':ReadError'],sprintf('Frame %d/%d (t=%.3s) could not be read',intFrame,intTotFrames,dblCurTime));
+			matVidRaw = readFrame(objVid);
 		end
 		dblCurTime = objVid.CurrentTime;
 		
@@ -234,8 +247,8 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 			gMatVid(gMatVid(:)>1)=1;
 			
 			%write mini vid
-			writeVideo(objMiniVid,gather(gMatVid));
-		
+			writeVideo(objMiniVid,uint16(gather(gMatVid)*double(intmax('uint16'))));
+			
 			%detect
 			[sPupilDetected,imPupil,imReflection,imBW,imGrey] = getPupil(gMatVid,gMatFilt,sglReflT,sglPupilT,objSE,vecPrevLoc,vecPupil,sTrPar);
 			vecPrevLoc = sPupilDetected.vecCentroid;
@@ -247,6 +260,8 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 			vecPupilCenterX(intDetectFrame) = sPupilDetected.vecCentroid(1);
 			vecPupilCenterY(intDetectFrame) = sPupilDetected.vecCentroid(2);
 			vecPupilRadius(intDetectFrame) = sPupilDetected.dblRadius;
+			vecPupilRadius2(intDetectFrame) = sPupilDetected.dblRadius2;
+			vecPupilAngle(intDetectFrame) = sPupilDetected.dblAngle;
 			vecPupilEdgeHardness(intDetectFrame) = sPupilDetected.dblEdgeHardness;
 			vecPupilMeanPupilLum(intDetectFrame) = sPupilDetected.dblMeanPupilLum;
 			vecPupilSdPupilLum(intDetectFrame) = sPupilDetected.dblSdPupilLum;
@@ -284,6 +299,7 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 			%ETO_updateMonitor(sFigETOM,sPupil,sPupil1,dblT,sTrPar.dblTotDurSecs);
 		end
 	end
+	
 	%close monitor
 	close(sFigETOM.ptrMainGUI);
 	
@@ -296,10 +312,11 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 	vecEdge = abs(max(zscore(vecPupilEdgeHardness)) - zscore(vecPupilEdgeHardness));
 	vecDist = sqrt(zscore(vecPupilCenterX).^2 + zscore(vecPupilCenterY).^2);
 	vecRound = abs(max(zscore(vecPupilApproxRoundness)) - zscore(vecPupilApproxRoundness));
-	indWrong = (zscore(vecRound+vecDist) > 1) | abs(zscore(vecPupilCenterX))>2;
+	indWrong = (zscore(vecRound+vecDist) > 3) | abs(zscore(vecPupilCenterX))>3;
 	indWrong = conv(indWrong,ones(1,5),'same')>0;
 	vecAllPoints = 1:numel(indWrong);
 	vecGoodPoints = find(~indWrong);
+	vecBadPoints = find(indWrong);
 	
 	%{
 	%initial roundness check
@@ -323,6 +340,8 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 	vecPupilFixedCenterX = interp1(vecGoodPoints,vecPupilCenterX(~indWrong),vecAllPoints,'linear','extrap');
 	vecPupilFixedCenterY = interp1(vecGoodPoints,vecPupilCenterY(~indWrong),vecAllPoints,'linear','extrap');
 	vecPupilFixedRadius = interp1(vecGoodPoints,vecPupilRadius(~indWrong),vecAllPoints,'linear','extrap');
+	vecPupilFixedRadius2 = interp1(vecGoodPoints,vecPupilRadius2(~indWrong),vecAllPoints,'linear','extrap');
+	vecPupilFixedAngle = interp1(vecGoodPoints,vecPupilAngle(~indWrong),vecAllPoints,'linear','extrap');
 	
 	%% gather data
 	%check which frames to remove
@@ -344,6 +363,9 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 	vecPupilFixedCenterX = vecPupilFixedCenterX(1:intLastFrame);
 	vecPupilFixedCenterY = vecPupilFixedCenterY(1:intLastFrame);
 	vecPupilFixedRadius = vecPupilFixedRadius(1:intLastFrame);
+	vecPupilFixedRadius2 = vecPupilFixedRadius2(1:intLastFrame);
+	vecPupilFixedAngle = vecPupilFixedAngle(1:intLastFrame);
+	vecPupilFixedPoints = indWrong;
 	
 	%output
 	sPupil = struct;
@@ -362,6 +384,8 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 	sPupil.vecPupilCenterX = vecPupilCenterX;
 	sPupil.vecPupilCenterY = vecPupilCenterY;
 	sPupil.vecPupilRadius = vecPupilRadius;
+	sPupil.vecPupilRadius2 = vecPupilRadius2;
+	sPupil.vecPupilAngle = vecPupilAngle;
 	sPupil.vecPupilEdgeHardness = vecPupilEdgeHardness;
 	sPupil.vecPupilMeanPupilLum = vecPupilMeanPupilLum;
 	sPupil.vecPupilAbsVidLum = vecPupilAbsVidLum;
@@ -371,10 +395,14 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 	sPupil.vecPupilApproxRoundness = vecPupilApproxRoundness;
 	sPupil.vecPupilApproxRadius = vecPupilApproxRadius;
 	sPupil.vecPupilNotReflection = vecPupilNotReflection;
+	
 	%fixed
 	sPupil.vecPupilFixedCenterX = vecPupilFixedCenterX;
 	sPupil.vecPupilFixedCenterY = vecPupilFixedCenterY;
 	sPupil.vecPupilFixedRadius = vecPupilFixedRadius;
+	sPupil.vecPupilFixedRadius2 = vecPupilFixedRadius2;
+	sPupil.vecPupilFixedAngle = vecPupilFixedAngle;
+	sPupil.vecPupilFixedPoints = vecPupilFixedPoints;
 	
 	%extra info
 	sPupil.strVidFile = strVidFile;
@@ -387,12 +415,12 @@ function sPupil = getEyeTrackingOffline(sFile,strTempDir)
 	
 	%% save file
 	%save
-	save([strVidPath strTrackedFile],'sPupil');
+	save(fullpath(strParPath,strTrackedFile),'sPupil');
 	fprintf('Saved data to %s (source: %s, path: %s) [%s]\n',strTrackedFile,strVidFile,strVidPath,getTime);
 	
 	%copy mini vid
-	copyfile([strTempDir strMiniOut],[strVidPath strMiniOut]);
-	fprintf('Saved minivid to %s (source: %s, target: %s) [%s]\n',strMiniOut,strTempDir,strVidPath,getTime);
+	copyfile(fullpath(strTempDir,strMiniOut),fullpath(strParPath,strMiniOut));
+	fprintf('Saved minivid to %s (source: %s, target: %s) [%s]\n',strMiniOut,strTempDir,strParPath,getTime);
 	
 	%% plot output
 	ETO_plotResults(sPupil);

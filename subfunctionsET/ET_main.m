@@ -224,7 +224,7 @@ function ET_main(varargin)
 				end
 				
 				%show video
-				imagesc(sEyeFig.ptrAxesMainVideo,matVidRaw(:,:,1,end)); %,[0 255]);
+				imagesc(sEyeFig.ptrAxesMainVideo,matVidRaw(:,:,1,end));
 				colormap(sEyeFig.ptrAxesMainVideo,'gray');
                 axis(sEyeFig.ptrAxesMainVideo,'off');
 				
