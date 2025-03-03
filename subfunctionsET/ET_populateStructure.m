@@ -3,7 +3,9 @@ function sET = ET_populateStructure(sET)
 	%						or creates one with default values
 	
 	%check for ini file
-	strPath = ET_getIniPath();
+	strPathFile = mfilename('fullpath');
+	cellDirs = strsplit(strPathFile,filesep);
+	strPath = strjoin(cellDirs(1:(end-2)),filesep);
 	strIni = strcat(strPath,filesep,'config.ini');
 	
 	%get defaults

@@ -161,6 +161,7 @@ function ET_main(varargin)
 				
 				%% get spikeGLX timestamp
 				if boolRecording && boolSaveToDisk && ~isempty(sET.hSGL)
+					%intCurCountNI = GetScanCount(sET.hSGL, sET.intStreamNI);
 					intCurCountNI = GetStreamSampleCount(sET.hSGL, sET.intStreamNI, sET.strHostAddress);
 					dblEphysTimeNI = intCurCountNI/sET.dblSampFreqNI;
 					
@@ -223,8 +224,8 @@ function ET_main(varargin)
 				end
 				
 				%show video
-				imagesc(sEyeFig.ptrAxesMainVideo,matVidRaw(:,:,1,end),[0 255]);
-				colormap(sEyeFig.ptrAxesMainVideo,'gray');
+				imagesc(sEyeFig.ptrAxesMainVideo,matVidRaw(:,:,1,end));
+				colormap(sEyeFig.ptrAxesMainVideo,'grey');
                 axis(sEyeFig.ptrAxesMainVideo,'off');
 				
 				%detect pupil?
@@ -261,8 +262,8 @@ function ET_main(varargin)
 					hold(sEyeFig.ptrAxesMainVideo,'off');
 					
 					%closed
-					imagesc(sEyeFig.ptrAxesSubVid1,imGrey,[0 255]);
-					colormap(sEyeFig.ptrAxesSubVid1,'gray');
+					imagesc(sEyeFig.ptrAxesSubVid1,imGrey);
+					colormap(sEyeFig.ptrAxesSubVid1,'grey');
 					axis(sEyeFig.ptrAxesSubVid1,'off');
 					
 					%regions

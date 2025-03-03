@@ -1,5 +1,7 @@
 function [ptrPanelParent,ptrSlider,ptrPanelTitle,sPointers] = ETO_genSliderPanel(ptrMasterFigure,vecLocation,sFiles)
 	
+	%error 'add description of entries (vertical?), add tracking parameter button+gui, and add "run all" button'
+	
 	%% set constants
 	%unpack location vector
 	dblTitleHeight = 0.15;

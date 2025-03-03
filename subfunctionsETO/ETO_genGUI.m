@@ -33,22 +33,8 @@ function [sFigETO,sETO] = ETO_genGUI(varargin)
 	vecPosGUI = [0,0,600,500];
 	ptrMainGUI = figure('Visible','on','Units','pixels','Position',vecPosGUI,'Resize','off');
 	%set main gui properties
-	set(ptrMainGUI,'DeleteFcn','ETO_DeleteFcn');
-	set(ptrMainGUI, 'MenuBar', 'none','ToolBar', 'none','NumberTitle','off');
-	
-	%change icon
-	strPathET = ET_getIniPath();
-	try
-		warning('off','MATLAB:ui:javaframe:PropertyToBeRemoved');
-		warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
-		jframe=get(ptrMainGUI,'javaframe');
-		jIcon=javax.swing.ImageIcon(fullpath(strPathET,'icon.png'));
-		jframe.setFigureIcon(jIcon);
-	catch
-	end
-	
-	% set mouse & scroll wheel callback
-	set(ptrMainGUI,'windowscrollWheelFcn',@ETO_Scrollwheel);
+	set(ptrMainGUI,'DeleteFcn','ETO_DeleteFcn')
+	set(ptrMainGUI, 'MenuBar', 'none','ToolBar', 'none');
 	
 	%set output
 	sFigETO.output = ptrMainGUI;
@@ -145,7 +131,7 @@ function [sFigETO,sETO] = ETO_genGUI(varargin)
 	
 	%% set properties
 	% Assign a name to appear in the window title.
-	ptrMainGUI.Name = 'EyeTracking Library';
+	ptrMainGUI.Name = 'Offline Eyetracker GUI';
 	
 	% Move the window to the center of the screen.
 	movegui(ptrMainGUI,'center')
@@ -173,22 +159,15 @@ function [sFigETO,sETO] = ETO_genGUI(varargin)
 			intFile = vecRunFiles(intFileIdx);
 			try 
 				strMiniVid = sETO.sFiles(intFile).sPupil.sPupil.strMiniVidFile;
-				[dummy,strMiniFile,strExt]=fileparts(strMiniVid);
 				strMiniVidPath = sETO.sFiles(intFile).sPupil.sPupil.strMiniVidPath;
-				cellUseExt = {'.mp4','.avi','.mj2'};
-				cellUseExt{end+1}=strExt;
-				cellUseExt = unique(cellUseExt);
-				for intExt=1:numel(cellUseExt)
-					strUseExt = cellUseExt{intExt};
-					if exist([strMiniVidPath strMiniFile strUseExt],'file')
-						indReady(intFileIdx) = true;
-					elseif exist(fullfile(sETO.sFiles(intFile).folder,[strMiniFile strUseExt]),'file')
-						indReady(intFileIdx) = true;
-					elseif exist(fullfile(sETO.strTempPath,[strMiniFile strUseExt]),'file')
-						indReady(intFileIdx) = true;
-					elseif exist(fullfile(sETO.sFiles(intFile).sPupil.folder,[strMiniFile strUseExt]),'file')
-						indReady(intFileIdx) = true;
-					end
+				if exist([strMiniVidPath strMiniVid],'file')
+					indReady(intFileIdx) = true;
+				elseif exist(fullfile(sETO.sFiles(intFile).folder,strMiniVid),'file')
+					indReady(intFileIdx) = true;
+				elseif exist(fullfile(sETO.strTempPath,strMiniVid),'file')
+					indReady(intFileIdx) = true;
+				else
+					indReady(intFileIdx) = false;
 				end
 			catch
 				indReady(intFileIdx) = false;
@@ -219,7 +198,7 @@ function [sFigETO,sETO] = ETO_genGUI(varargin)
 				intFile = vecRunFiles(intFileIdx);
 				try
 					%run auto-parameters
-					sETO.sFiles(intFile) = getEyeTrackerChecker(sETO.sFiles(intFile),sETO.strTempPath);
+					getEyeTrackerChecker(sETO.sFiles(intFile),sETO.strTempPath);
 				catch ME
 					dispErr(ME);
 				end
@@ -382,7 +361,7 @@ function [sFigETO,sETO] = ETO_genGUI(varargin)
 		drawnow;
 		
 		%get data
-		sETO.sFiles = ETO_CompileVideoLibrary(sETO.strRootPath,cellExt,ptrText);
+		sETO.sFiles = ETO_CompileVideoLibrary(sETO.strRootPath,cellExt);
 		
 		%close msg
 		delete(ptrMsg);

@@ -38,18 +38,19 @@ function sLabels = ETP_SetLabels(hObject,eventdata)
 	
 	%allocate 
 	ETP_matAllImOrig = nan(numel(vecKeepY),numel(vecKeepX),1,size(sETP.matFrames,4),size(sETP.matFrames,5));
-	if sETP.boolUseGPU
-		ETP_matAllIm = ones(numel(vecKeepY),numel(vecKeepX),size(sETP.matFrames,4),'gpuArray');
-	end
+	ETP_matAllIm = nan(numel(vecKeepY),numel(vecKeepX),size(sETP.matFrames,4));
 	for intIm=1:size(sETP.matFrames,4)
 		%get originals
 		ETP_matAllImOrig(:,:,1,intIm,:) = double(sETP.matFrames(vecKeepY,vecKeepX,1,intIm,:));
 		
 		% apply image corrections
 		matMeanIm = (sum(ETP_matAllImOrig(:,:,1,intIm,1:floor(intTempAvg)),5) + (intTempAvg-floor(intTempAvg))*ETP_matAllImOrig(:,:,1,intIm,ceil(intTempAvg)))./intTempAvg;
-		[matIm,imReflection] = ET_ImPrep(matMeanIm,sETP.gMatFilt,sETP.dblThreshReflect,sETP.objSE,sETP.boolInvertImage);
-		matIm(imReflection) = 0;
-		ETP_matAllIm(:,:,intIm) = imadjust(matIm./255);
+		matIm = imadjust(matMeanIm./255,[],[],dblGamma).*dblGain;
+		matIm(matIm(:)>1)=1;
+		ETP_matAllIm(:,:,intIm) = matIm;
+	end
+	if sETP.boolUseGPU
+		ETP_matAllIm = gpuArray(ETP_matAllIm);
 	end
 	
 	%% label all frames

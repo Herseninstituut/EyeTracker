@@ -23,18 +23,14 @@ function strVidFile = ETP_prepareMovie(strPath,strVideoFile,strTempPath,strAnswe
 	if strcmp(strPath,strTempPath)
 		%use file
 		strVidFile = [strPath strVideoFile];
-		return
 	end
 	
 	%check if old file is present
 	if exist([strTempPath strVideoFile],'file')
 		%check if file properties match
 		sTempFile = dir([strTempPath strVideoFile]);
-		dblCompare1 = sTempFile.bytes;
-		dblCompare2 = sSourceFile.bytes;
-		if dblCompare1 == dblCompare2
+		if sTempFile.bytes == sSourceFile.bytes
 			%use file
-			fprintf('File "%s" is already present at local path "%s" [%s]\n',strVideoFile,strTempPath,getTime);
 			strVidFile = [strTempPath strVideoFile];
 			return;
 		else
@@ -43,7 +39,7 @@ function strVidFile = ETP_prepareMovie(strPath,strVideoFile,strTempPath,strAnswe
 		end
 	end
 	
-	if ~exist('strAnswer','var') || isempty(strAnswer)
+	if ~exist('strAnswer','var')
 		%ask whether to copy
 		sOpts.Interpreter = 'none';
 		sOpts.Default = 'Yes';
@@ -65,7 +61,6 @@ function strVidFile = ETP_prepareMovie(strPath,strVideoFile,strTempPath,strAnswe
 		drawnow;
 		
 		%copy
-		fprintf('Copying "%s" to local path "%s" [%s]\n',strVideoFile,strTempPath,getTime);
 		[status1,msg1,msgID1] = copyfile([strPath strVideoFile],[strTempPath strVideoFile]);
 		
 		%close msg

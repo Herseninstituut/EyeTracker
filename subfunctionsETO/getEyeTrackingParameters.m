@@ -2,9 +2,6 @@ function [sTrackParams,sLabels] = getEyeTrackingParameters(sFile,strTempPath,boo
 	%getEyeTrackingParameters Run offline pupil detection parameter setter
 	%   sTrackParams = getEyeTrackingParameters(sFile)
 	
-	%sFile=sETO.sFiles(intFile);
-	%strTempPath=sETO.strTempPath;
-	
 	%% globals
 	global sFigETP;
 	global sETP;
@@ -64,8 +61,8 @@ function [sTrackParams,sLabels] = getEyeTrackingParameters(sFile,strTempPath,boo
 		vecPosGUI = [0,0,dblWidth,dblHeight];
 		ptrMainGUI = figure('Visible','on','Units','pixels','Position',vecPosGUI,'Color',vecMainColor);
 		set(ptrMainGUI,'DeleteFcn','ETP_DeleteFcn')
-		set(ptrMainGUI, 'MenuBar', 'none','ToolBar', 'none','NumberTitle','off');
-		ptrMainGUI.Name = 'Parameter Setter';
+		set(ptrMainGUI, 'MenuBar', 'none','ToolBar', 'none');
+		ptrMainGUI.Name = 'Eyetracker Parameter GUI';
 		
 		%set output
 		sFigETP.output = ptrMainGUI;
@@ -84,12 +81,7 @@ function [sTrackParams,sLabels] = getEyeTrackingParameters(sFile,strTempPath,boo
 		end
 		
 		%% access video
-		if sFigETP.boolAutoRun
-			strAnswer = 'Yes';
-		else
-			strAnswer = [];
-		end
-		strVidFile = ETP_prepareMovie(strPath,strVideoFile,strTempPath,strAnswer);
+		strVidFile = ETP_prepareMovie(strPath,strVideoFile,strTempPath);
 		sETP.objVid = VideoReader(strVidFile);
 		
 		%% data import/export
@@ -209,7 +201,7 @@ function [sTrackParams,sLabels] = getEyeTrackingParameters(sFile,strTempPath,boo
 		%% check if only labelling is enabled
 		if boolOnlyLabels
 			%set labels
-			ETP_sLabels = ETP_SetLabels();
+			ETP_SetLabels();
 			%quit
 			ETP_DeleteFcn;
 		end
