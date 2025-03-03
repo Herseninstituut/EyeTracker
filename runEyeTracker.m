@@ -60,6 +60,8 @@ function varargout = runEyeTracker(varargin)
 	%	- separate lossless pupil ROI video file (.mj2)
 	%	- binary file containing synchronization ROI luminance (uint16)
 	%	- button to flip image up/down
+    %Version 2.5 [2025-03-03] by RH
+    %   - small edits to make ET work with new SpikeGLX versions
 	
 	%set tags
 	%#ok<*INUSL>
@@ -107,6 +109,19 @@ function ptrListSelectDevice_CreateFcn(hObject, eventdata, handles),end%#ok<DEFN
 function runEyeTracker_OpeningFcn(hObject, eventdata, handles, varargin)
 	%opening actions
 	
+	%add paths
+	if ~isdeployed
+		strFullpath = mfilename('fullpath');
+		strPath = fileparts(strFullpath);
+		sDir=dir([strPath filesep '**' filesep]);
+		%remove git folders
+		sDir(contains({sDir.folder},[filesep '.git'])) = [];
+		cellFolders = unique({sDir.folder});
+		for intFolder=1:numel(cellFolders)
+			addpath(cellFolders{intFolder});
+		end
+	end
+	
 	%define globals
 	global sEyeFig;
 	global sET;
@@ -114,10 +129,21 @@ function runEyeTracker_OpeningFcn(hObject, eventdata, handles, varargin)
 	sET = [];
 	
 	%set closing function
-	set(hObject,'DeleteFcn','ET_DeleteFcn')
+	set(hObject,'DeleteFcn','ET_DeleteFcn','Name','Online EyeTracker');
+	
+	%change icon
+	strPathET = ET_getIniPath();
+	try
+		warning('off','MATLAB:ui:javaframe:PropertyToBeRemoved');
+		warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
+		jframe=get(hObject,'javaframe');
+		jIcon=javax.swing.ImageIcon(fullpath(strPathET,'icon.png'));
+		jframe.setFigureIcon(jIcon);
+	catch
+	end
 	
 	% set logo
-	I = imread('EyeTracker.jpg');
+	I = imread(fullpath(strPathET,'EyeTracker.jpg'));
 	axes(handles.ptrAxesLogo);
 	imshow(I);
 	drawnow;
@@ -558,17 +584,18 @@ function ptrToggleConnectSGL_Callback(hObject, eventdata, handles) %#ok<DEFNU>
 		
 		%get host address
 		strHost = get(sEyeFig.ptrEditHostAddress,'String');
+        sET.strHostAddress = strHost;
+
 		try
 			%connect
 			sET.hSGL = SpikeGL(strHost);
-			sET.strHostAddress = strHost;
-			
+%             sET.hSGL = SpikeGL(sET.strHostAddress);
 			%retrieve name & NI sampling rate
-			sET.intStreamNI = 0; %-1;
-			%sET.strRecordingNI = GetRunName(sET.hSGL);
-			%sET.dblSampFreqNI = GetSampleRate(sET.hSGL, sET.intStreamNI);
-			sET.dblSampFreqNI = GetStreamSampleRate(sET.hSGL, sET.intStreamNI, strHost);
-
+			% sET.intStreamNI = -1;
+            sET.intStreamNI = 0;
+% 			sET.strRecordingNI = GetRunName(sET.hSGL);
+			% sET.dblSampFreqNI = GetSampleRate(sET.hSGL, sET.intStreamNI);
+            sET.dblSampFreqNI = GetStreamSampleRate(sET.hSGL, sET.intStreamNI, strHost);
 			%success
 			boolSuccess = true;
 		catch

@@ -17,15 +17,22 @@ function sFigETOM = ETO_genFastMonitor(sTrPar,dblMaxT,intMaxF)
 	dblPanelWidth = 1-dblPanelStartX;
 	dblTextHeight = 0.21;
 	vecPosGUI = [0,0,dblWidth,dblHeight];
-	ptrMainGUI = figure('Visible','on','Units','pixels','Position',vecPosGUI,'Color',vecMainColor,'Name','Eye tracker','resize','off','MenuBar', 'none','ToolBar', 'none');
+	ptrMainGUI = figure('Visible','on','Units','pixels','Position',vecPosGUI,'Color',vecMainColor,'Name','EyeTracking Progress','resize','off');
+	set(ptrMainGUI, 'MenuBar', 'none','ToolBar', 'none','NumberTitle','off');
 	ptrMainGUI.Units = 'normalized';
 	% Move the window to the center of the screen.
 	movegui(ptrMainGUI,'center');
 	
+	%vid file
+	if isfield(sTrPar,'strVidFile')
+		strVidFile = sTrPar.strVidFile;%: 'RecMA7_2021-02-11R01'
+	else
+		strVidFile = 'N/A';
+	end
 	%file name
 	vecLocText = [dblPanelStartX 0.75 dblPanelWidth dblTextHeight];
 	ptrTextRoot = uicontrol(ptrMainGUI,'Style','text','HorizontalAlignment','left','FontSize',11,'BackgroundColor',vecMainColor,'Units','normalized','Position',vecLocText,...
-		'String',sprintf('File: %s',sTrPar.strVidFile));
+		'String',sprintf('File: %s',strVidFile));
 	
 	%recording
 	if isfield(sTrPar,'strRecordingNI')

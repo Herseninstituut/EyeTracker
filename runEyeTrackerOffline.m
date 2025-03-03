@@ -5,11 +5,28 @@
 %You can set the algorithm's parameters manually, or set a limited number
 %of labelled frames and let the algorithm optimize by itself.
 %
-%	Created by Jorrit Montijn, 2021-05-12 (YYYY-MM-DD)
+%	Version 1.2.5 - 2022-11-17 (YYYY-MM-DD)
+%	Created by Jorrit Montijn
 
 %Version history:
 %1.0 - 12 May 2021
 %	Created by Jorrit Montijn
+%1.1 - 7 Sept 2022
+%	Optimized code and added support for elliptic pupil fits [by JM]
+%1.2 - 15 Sept 2022
+%	Improved checker tracker [by JM]
+%1.2.1 - 3 Nov 2022
+%	Added parameter correction factors for pupil and reflection thresholds [by JM]
+%1.2.2 - 4 Nov 2022
+%	Added circular mask [by JM]
+%1.2.3 - 11 Nov 2022
+%	Updated tooltips, manual, and made some cosmetic changes [by JM]
+%1.2.4 - 15 Nov 2022
+%	Increased offline pupil detection speed, added library progress, added speck removal [by JM]
+%1.2.5 - 17 Nov 2022
+%	Dynamic pupil threshold selection based on image histogram [by JM]
+%1.2.6 - 09 Feb 2023
+%	Enhanced fitting stability [by JM]
 
 %% add subfolder to path
 cellPaths = strsplit(path(),';');

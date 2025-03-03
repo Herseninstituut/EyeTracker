@@ -1,4 +1,4 @@
-function sFiles = ETO_CompileVideoLibrary(strMasterPath,cellExt)
+function sFiles = ETO_CompileVideoLibrary(strMasterPath,cellExt,ptrText)
 	
 	%% compile library
 	sFiles = [];
@@ -13,6 +13,14 @@ function sFiles = ETO_CompileVideoLibrary(strMasterPath,cellExt)
 	
 	%% populate parameters
 	for intFile=1:numel(sFiles)
+		%msg
+		if nargin > 2 && exist('ptrText','var')
+			%try
+				set(ptrText,'String',sprintf('Compiling video library...\nProcessing file %d/%d',intFile,numel(sFiles)));
+				drawnow;
+			%catch
+			%end
+		end
 		%get mat files
 		sMatFiles = dir(fullfile(sFiles(intFile).folder,'*.mat'));
 		
@@ -43,7 +51,7 @@ function sFiles = ETO_CompileVideoLibrary(strMasterPath,cellExt)
 		%fcheck if file matches
 		if isempty(sLabelLoad)
 			sLabels = [];
-		elseif sLabelLoad.sLabels.ParentVid ~= strOrigFile
+		elseif ~strcmpi(sLabelLoad.sLabels.ParentVid,strOrigFile)
 			warning([mfilename ':NameMismatch'],sprintf('Video parent of "%s" [%s] does not match "%s"',strLabelFile,sLabelLoad.sLabels.ParentVid,strOrigFile));
 			errordlg(sprintf('Label file %s has mismatching video parent: move or delete file',strLabelFile),'Video name mismatch');
 			sLabels = [];

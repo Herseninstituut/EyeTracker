@@ -2,3 +2,5 @@
 *.ini
 *.ai
 backup/**
+Local/**
+old/**

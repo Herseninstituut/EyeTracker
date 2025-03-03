@@ -1,4 +1,8 @@
-function [vecCentroid,dblRadius,dblEdgeHardness,imPupil] = getCircleFitWrapper(matIn,vecApproxCentroid,dblApproxRadius,imIgnore,imBW)
+function [vecOptimParams,dblEdgeHardness,imPupil] = getCircleFitWrapper(matIn,vecApproxCentroid,dblApproxRadius,imIgnore,imBW)
+	%getCircleFitWrapper Optimizes a circular or ellipsoid fit on an input image (range: 0-1)
+	%	[vecOptimParams,dblEdgeHardness,imPupil] = getCircleFitWrapper(matIn,vecApproxCentroid,dblApproxRadius,imIgnore,imBW)
+	
+	%vecApproxCentroid can be X-Y centroid or 5-element p0 vector for lsqcurvefit
 	
 	%% check if mask is supplied
 	if ~exist('imIgnore','var') || isempty(imIgnore)
@@ -12,64 +16,76 @@ function [vecCentroid,dblRadius,dblEdgeHardness,imPupil] = getCircleFitWrapper(m
 	vecY = matY(~imIgnore);
 	vecZ = (matIn(~imIgnore)./max(matIn(~imIgnore)));
 	vecP = ~imBW(~imIgnore).*-1;
-	vecParams0 = [vecApproxCentroid(:)' dblApproxRadius/2];%dblApproxRadius];
-	%figure%,imagesc(imBW.*10);
-	%colorbar
-	%% build function
+	if numel(vecApproxCentroid) == 2
+		vecParams0 = [vecApproxCentroid(:)' dblApproxRadius/2 dblApproxRadius/2 0];
+	else
+		vecParams0 = vecApproxCentroid(:)';
+	end
+	% build data grid
 	matXY = [vecX vecY];
 	
-	sConstants = struct;
-	sConstants.vecX = vecX;
-	sConstants.vecY = vecY;
-	sConstants.vecZ = vecZ;
-	sConstants.vecApproxParams = vecParams0;
-	
-	%% fit
+	%% fit ellipse
+	fFunc = @getCircFit; %slower, but better quality
+	%fFunc = @getCircFitPenalty; %faster, but worse quality
 	sOpt = struct;
-	sOpt.Display = 'off';
-	%sOpt.TolFun = 1e-15;
-	%sOpt.TolX = 1e-15;
-	vecLB = [0 0 0.5];
-	vecUB = [size(matIn,2) size(matIn,1) size(matIn,1)];
-	%[vecParamsFit,dblVal,flag,out] = lsqcurvefit(@fCircFit,vecParams0,matXY,vecZ,vecLB,vecUB,sOpt);
-	%[vecParamsFit,dblVal,flag,out] = lsqcurvefit(@getCircFit,vecParams0,matXY,vecZ,vecLB,vecUB,sOpt);
-	[vecParamsFit,dblVal,flag,out] = lsqcurvefit(@getCircFitPenalty,vecParams0,matXY,vecZ,vecLB,vecUB,sOpt);
-	%dblVal
-	
-	%[vecParamsFit,dblVal,flag,out] = fminsearch(fCircFit,vecParams0,sOpt);
-	%[vecParamsFit,dblVal,flag,out] = fminunc(fCircFit,vecParams0,sOpt);
-	vecCentroid = vecParamsFit(1:2);
-	dblRadius = vecParamsFit(3);
-	
-	%plot values
-	%vecV = getCircFitPenalty(vecParamsFit,matXY);
-	%hold on;scatter(vecX,vecY,[],vecV);hold off;
+	sOpt.Display = 'off';%'off'
+	vecLB = [0 0 0.5 0.5 -pi];
+	vecParams0(vecParams0<vecLB)=vecLB(vecParams0<vecLB);
+	vecUB = [size(matIn,2) size(matIn,1) size(matIn,1)/2 size(matIn,1)/2 pi];
+	vecParams0(vecParams0>vecUB)=vecUB(vecParams0>vecUB);
+	[vecOptimParams,dblVal,flag,out] = lsqcurvefit(fFunc,vecParams0,matXY,vecZ,vecLB(1:numel(vecParams0)),vecUB(1:numel(vecParams0)),sOpt);
 	
 	%% calculate edge hardness
-	if nargout > 2
-		%get relative locations
-		vecRelX = sConstants.vecX - vecParamsFit(1);
-		vecRelY = sConstants.vecY - vecParamsFit(2);
+	if nargout > 1
 		
-		%get distance
-		[dummy,vecDist] = cart2pol(vecRelX,vecRelY);
+		%get mask
+		matXY_sq = [matX(:) matY(:)];
+		vecP = ~imBW(:).*-1;
+		matPupil = reshape(feval(fFunc,vecOptimParams,matXY_sq),size(matIn));
+		imPupil = matPupil>0.5;
+		
 		%get pixel identities
-		indInnerBorder = (vecDist > (dblRadius - 2)) & (vecDist <= dblRadius);
-		indOuterBorder = (vecDist > (dblRadius)) & (vecDist <= dblRadius + 2);
+		matB = (matPupil > 0.2) & (matPupil < 0.8);
+		matDilB = imdilate(matB,strel('disk',2,8));
+		indOuterBorder = matDilB & ~imPupil & ~imIgnore;
+		indInnerBorder = matDilB & imPupil & ~imIgnore;
+		
 		%get border sharpness
-		dblEdgeHardness = mean(sConstants.vecZ(indInnerBorder)) - mean(sConstants.vecZ(indOuterBorder));
-	end
-	
-	%% calculate mask
-	if nargout > 3
-		%get relative locations
-		matRelX = matX - vecParamsFit(1);
-		matRelY = matY - vecParamsFit(2);
+		indInnerBorder = indInnerBorder(~imIgnore);
+		indOuterBorder = indOuterBorder(~imIgnore);
+		dblEdgeHardness = mean(vecZ(indInnerBorder)) - mean(vecZ(indOuterBorder));
 		
-		%get distance
-		[dummy,matDist] = cart2pol(matRelX,matRelY);
+		%{
+		%get fitted pupil
+		%vecV = getCircFitPenalty(vecOptimParams,matXY);
 		
-		%get pixel identities
-		imPupil = matDist < vecParamsFit(3);
+		%plot
+		figure
+		
+		F = scatteredInterpolant(vecX,vecY,vecZ);
+		imZ = F(matX,matY);
+		
+		F = scatteredInterpolant(vecX,vecY,vecP);
+		imP = F(matX,matY)+1;
+		
+		subplot(2,3,1)
+		imagesc(matPupil)
+		colorbar
+		subplot(2,3,2)
+		imagesc(imZ)
+		subplot(2,3,3)
+		imagesc(imP)
+		
+		subplot(2,3,4)
+		imRGB = matPupil;
+		imRGB(:,:,2) = imZ;
+		imRGB(:,:,3) = imIgnore;
+		
+		imshow(imRGB)
+		
+		subplot(2,3,5)
+		imagesc((imZ-matPupil).^2);colorbar
+		%}
+		
 	end
 end
