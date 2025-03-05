@@ -225,7 +225,7 @@ function ET_main(varargin)
 				
 				%show video
 				imagesc(sEyeFig.ptrAxesMainVideo,matVidRaw(:,:,1,end));
-				colormap(sEyeFig.ptrAxesMainVideo,'grey');
+				colormap(sEyeFig.ptrAxesMainVideo,'gray');
                 axis(sEyeFig.ptrAxesMainVideo,'off');
 				
 				%detect pupil?
@@ -263,7 +263,7 @@ function ET_main(varargin)
 					
 					%closed
 					imagesc(sEyeFig.ptrAxesSubVid1,imGrey);
-					colormap(sEyeFig.ptrAxesSubVid1,'grey');
+					colormap(sEyeFig.ptrAxesSubVid1,'gray');
 					axis(sEyeFig.ptrAxesSubVid1,'off');
 					
 					%regions
